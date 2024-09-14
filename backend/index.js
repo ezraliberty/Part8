@@ -6,7 +6,7 @@ const Person = require("./person");
 
 require("dotenv").config();
 
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI = process.env.DATABASE;
 
 console.log("connecting to", MONGODB_URI);
 
