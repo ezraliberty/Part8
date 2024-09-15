@@ -26,58 +26,47 @@ const resolvers = {
         id: book._id,
         title: book.title,
         published: book.published,
-        author: book.author, // Populated author
+        author: book.author,
         genres: {
-          genres: book.genres.length > 0 ? book.genres : [], // Ensure genres is not null
+          genres: book.genres.length > 0 ? book.genres : [],
         },
       }));
     },
     allGenres: async () => {
-      const books = await Book.find(); // Fetch all books
-      const allGenres = []; // Initialize an empty array to hold unique genres
+      const books = await Book.find();
+      const allGenres = [];
 
-      // Loop through each book and its genres
       books.forEach((book) => {
         book.genres.forEach((genre) => {
-          // Only add the genre if it's not already in the allGenres array
           if (!allGenres.includes(genre)) {
             allGenres.push(genre);
           }
         });
       });
 
-      return { genres: allGenres }; // Return as Genres type
+      return { genres: allGenres };
     },
-    // {
-    // if (!args.author && !args.genres) {
-    //   return Book.find({});
-    // }
-
-    // if (args.author)
-    // {
-    //   const author = await Author.findOne({name: args.author})
-    // }
-    // return books.filter(book => {
-    //   const author = book.author.name === args.author;
-    //   const genre = book.genres.includes(args.genres)
-    //   return (author && genre) || author || genre
-    // })},
     allAuthors: async () => {
-      const authors = await Author.find({});
-      return authors.map((author) => ({
-        name: author.name,
-        // bookCount,
-        born: author.born,
-      }));
+      const authorsWithBookCount = await Author.aggregate([
+        {
+          $lookup: {
+            from: "books",
+            localField: "_id",
+            foreignField: "author",
+            as: "books",
+          },
+        },
+        {
+          $project: {
+            name: 1,
+            born: 1,
+            bookCount: { $size: "$books" },
+          },
+        },
+      ]);
+
+      return authorsWithBookCount;
     },
-    //   authors.map(author => {
-    //   const bookCount = books.filter(book => book.author === author.name).length
-    //   return {
-    //     name: author.name,
-    //     bookCount,
-    //     born: author.born,
-    //   }
-    // })
     me: (root, args, context) => {
       return context.currentUser;
     },
@@ -151,9 +140,6 @@ const resolvers = {
       author.born = args.born;
       await author.save();
       return author;
-      // const updateBorn = {...author, born: args.born}
-      // authors = authors.map(a => a.name === args.name ? updateBorn : a)
-      // return updateBorn
     },
     addAuthor: async (root, args, context) => {
       const currentUser = context.currentUser;
